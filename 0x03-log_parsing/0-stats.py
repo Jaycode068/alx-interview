@@ -1,36 +1,37 @@
-import re
+#!/usr/bin/python3
+'''a script that reads stdin line by line and computes metrics'''
+
+
 import sys
 
-def compute_metrics(lines):
-    total_size = 0
-    status_count = {}
+cache = {'200': 0, '301': 0, '400': 0, '401': 0,
+         '403': 0, '404': 0, '405': 0, '500': 0}
+total_size = 0
+counter = 0
 
-    for line in lines:
-        match = re.match(r'(\S+) - \[([^\]]+)\] "GET /projects/260 HTTP/1.1" (\d+) (\d+)', line)
-        if match:
-            _, _, _, status_code, file_size = match.groups()
-            total_size += int(file_size)
-            status_count[status_code] = status_count.get(status_code, 0) + 1
+try:
+    for line in sys.stdin:
+        line_list = line.split(" ")
+        if len(line_list) > 4:
+            code = line_list[-2]
+            size = int(line_list[-1])
+            if code in cache.keys():
+                cache[code] += 1
+            total_size += size
+            counter += 1
 
-    return total_size, status_count
+        if counter == 10:
+            counter = 0
+            print('File size: {}'.format(total_size))
+            for key, value in sorted(cache.items()):
+                if value != 0:
+                    print('{}: {}'.format(key, value))
 
-def print_statistics(total_size, status_count):
-    print("Total file size:", total_size)
-    for status_code in sorted(status_count.keys()):
-        if status_code in ['200', '301', '400', '401', '403', '404', '405', '500']:
-            print(f"{status_code}: {status_count[status_code]}")
+except Exception as err:
+    pass
 
-if __name__ == "__main__":
-    lines = []
-    try:
-        for line in sys.stdin:
-            lines.append(line.strip())
-            if len(lines) == 10:
-                total_size, status_count = compute_metrics(lines)
-                print_statistics(total_size, status_count)
-                lines = []
-    except KeyboardInterrupt:
-        total_size, status_count = compute_metrics(lines)
-        print_statistics(total_size, status_count)
-        sys.exit(0)
-
+finally:
+    print('File size: {}'.format(total_size))
+    for key, value in sorted(cache.items()):
+        if value != 0:
+            print('{}: {}'.format(key, value))
